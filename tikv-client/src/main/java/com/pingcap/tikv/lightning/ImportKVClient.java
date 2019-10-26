@@ -7,6 +7,7 @@ import com.pingcap.tikv.operation.NoopHandler;
 import com.pingcap.tikv.util.ChannelFactory;
 import com.pingcap.tikv.util.ConcreteBackOffer;
 import io.grpc.ManagedChannel;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Random;
 import java.util.function.Supplier;
@@ -27,6 +28,15 @@ import org.tikv.kvproto.ImportKvpb.WriteEngineResponse;
 import org.tikv.kvproto.ImportKvpb.WriteEngineV3Request;
 
 public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, ImportKVStub> {
+
+  public static ImportKVClient create(TiConfiguration conf, ChannelFactory channelFactory) {
+    return new ImportKVClient(conf, channelFactory);
+  }
+
+  public OpenEngineResponse openEngine(String uuid) {
+    return openEngine(ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8)));
+  }
+
   public OpenEngineResponse openEngine(ByteString uuid) {
     createChannel();
     Supplier<OpenEngineRequest> request =

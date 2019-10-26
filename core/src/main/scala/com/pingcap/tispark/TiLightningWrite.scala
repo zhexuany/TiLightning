@@ -2,7 +2,6 @@ package com.pingcap.tispark
 
 import java.util.UUID
 
-import com.google.protobuf.ByteString
 import com.pingcap.tikv.{TiConfiguration, TiSession}
 import com.pingcap.tikv.lightning.ImportKVClient
 import com.pingcap.tikv.meta.{TiColumnInfo, TiDBInfo, TiTableInfo}
@@ -87,10 +86,10 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
   }
 
   private def doImport(iter: Iterator[TiRow]): Unit = {
-    val importKVClient = new ImportKVClient()
+    val importKVClient = tiSession.getImportKVClient
     val uuid = UUID.randomUUID()
     // import engine is open
-    importKVClient.openEngine(ByteString.copyFrom(uuid.toString.getBytes))
+    importKVClient.openEngine(uuid.toString)
 
     // TODO: restore engine -> import engine -> import kv -> close engine -> clean up
   }

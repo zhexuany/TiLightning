@@ -1,6 +1,8 @@
-package com.pingcap.tikv;
+package com.pingcap.tikv.lightning;
 
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.AbstractGRPCClient;
+import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.operation.NoopHandler;
 import com.pingcap.tikv.util.ChannelFactory;
 import com.pingcap.tikv.util.ConcreteBackOffer;

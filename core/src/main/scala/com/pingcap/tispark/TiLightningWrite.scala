@@ -4,6 +4,8 @@ import java.util.UUID
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
+import com.pingcap.tikv.codec.{KeyUtils, TableCodec}
+import com.pingcap.tikv.key.RowKey
 import com.pingcap.tikv.{TiConfiguration, TiSession}
 import com.pingcap.tikv.lightning.ImportKVClient
 import com.pingcap.tikv.meta.{TiColumnInfo, TiDBInfo, TiTableInfo}
@@ -15,6 +17,7 @@ import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
 import org.apache.spark.sql.{DataFrame, TiContext}
 import org.apache.spark.util.SizeEstimator
 import org.slf4j.LoggerFactory
+import org.tikv.kvproto.ImportKvpb.KVPair
 
 import scala.collection.JavaConverters._
 
@@ -42,12 +45,14 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
   private var colsMapInTiDB: Map[String, TiColumnInfo] = _
   private var colsInDf: List[String] = _
 
-  private val scheduledExecutorService: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setDaemon(true).build);
+  private val scheduledExecutorService: ScheduledExecutorService =
+    Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setDaemon(true).build);
 
   private def write(): Unit = {
     try {
       initialize()
       doWrite()
+      switchToNormalMode()
     } finally {
       close()
     }
@@ -96,7 +101,10 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
 
     // split and sort by row id
     val numOfRegions = splitRowByRegion(tiRowRdd)
-    val rddAfterSplit: RDD[WrappedRow] = tiRowRdd.zipWithIndex().sortBy(_._2, numPartitions = numOfRegions).map(x => WrappedRow(x._1, x._2))
+    val rddAfterSplit: RDD[WrappedRow] = tiRowRdd
+      .zipWithIndex()
+      .sortBy(_._2, numPartitions = numOfRegions)
+      .map(x => WrappedRow(x._1, x._2))
 
     // do import for each partition(region)
     rddAfterSplit.foreachPartition(iter => doImport(iter));
@@ -107,7 +115,7 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
     val totalRows = rdd.count()
     val NO_OF_SAMPLE_ROWS = 1000000L
     var totalSize = 0L
-    totalSize = if(totalRows > NO_OF_SAMPLE_ROWS) {
+    totalSize = if (totalRows > NO_OF_SAMPLE_ROWS) {
       val sampleRDD = rdd.sample(withReplacement = false, NO_OF_SAMPLE_ROWS)
       val sampleRDDSize = getRDDSize(sampleRDD)
       sampleRDDSize.*(totalRows)./(NO_OF_SAMPLE_ROWS)
@@ -118,7 +126,7 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
     (totalSize / regionSize).toInt
   }
 
-  def getRDDSize(rdd: RDD[TiRow]) : Long = {
+  def getRDDSize(rdd: RDD[TiRow]): Long = {
     var rddSize = 0L
     val rows = rdd.collect()
     for (i <- rows.indices) {
@@ -149,20 +157,76 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
    * @param iter
    */
   private def doImport(iter: Iterator[WrappedRow]): Unit = {
-    val importKVClient = new ImportKVClient()
+    val importKVClient = tiSession.getImportKVClient()
 
     val tableName = tiTableInfo.getName
     val engineId = iter.next().handle
     val tag = makeTag(tableName, engineId)
-    val uuid = UUIDType5.nameUUIDFromNamespaceAndString(UUID.fromString("d68d6abe-c59e-45d6-ade8-e2b0ceb7bedf"), tag)
+    val uuid = UUIDType5
+      .nameUUIDFromNamespaceAndString(UUID.fromString("d68d6abe-c59e-45d6-ade8-e2b0ceb7bedf"), tag)
+    val uuid_s = uuid.toString
 
     // start OpenEngine
     logger.info("opening engine " + uuid)
-    importKVClient.openEngine(uuid.toString)
+    importKVClient.openEngine(uuid_s)
     logger.info("opened engine " + uuid)
     // TODO: restore engine -> import engine -> import kv -> close engine -> clean up
     // we skip restore engine to simplify logic
 
+    val kvs = iter
+      .map(x => generateRowKey(x.row, x.handle))
+      .map(
+        x =>
+          KVPair
+            .newBuilder()
+            .setKey(KeyUtils.extract(x._1.bytes))
+            .setValue(KeyUtils.extract(x._2))
+            .build()
+      )
+
+    // write rows to kv
+    logger.info("writing to kv via engine " + uuid)
+    importKVClient.writeRowsV3(
+      uuid_s,
+      tableName,
+      colsInDf.toArray,
+      tiSession.getTimestamp.getVersion,
+      kvs.toList.asJava
+    )
+    logger.info("wrote to kv via engine " + uuid)
+
+    // close engine
+    importKVClient.closeEngine(uuid_s)
+
     // start ImportEngine
+    logger.info("importing engine " + uuid)
+    importKVClient.importEngine(uuid_s)
+    logger.info("imported engine " + uuid)
+
+  }
+
+  private def locatePhysicalTable(row: TiRow): Long = {
+    tiTableInfo.getId
+  }
+
+  private def encodeTiRow(tiRow: TiRow): Array[Byte] = {
+    val colSize = tiRow.fieldCount()
+
+    val convertedValues = new Array[AnyRef](colSize)
+    for (i <- 0 until colSize) {
+      // pk is handle can be skipped
+      val columnInfo = tiTableInfo.getColumn(i)
+      val value = tiRow.get(i, columnInfo.getType)
+      convertedValues.update(i, value)
+    }
+
+    TableCodec.encodeRow(tiTableInfo.getColumns, convertedValues, tiTableInfo.isPkHandle)
+  }
+
+  private def generateRowKey(row: TiRow, handle: Long): (SerializableKey, Array[Byte]) = {
+    (
+      new SerializableKey(RowKey.toRowKey(locatePhysicalTable(row), handle).getBytes),
+      encodeTiRow(row)
+    )
   }
 }

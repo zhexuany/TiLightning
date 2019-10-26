@@ -29,18 +29,11 @@ import org.tikv.kvproto.ImportKvpb.WriteEngineV3Request;
 
 public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, ImportKVStub> {
 
-  public static ImportKVClient create(TiConfiguration conf, ChannelFactory channelFactory) {
-    return new ImportKVClient(conf, channelFactory);
-  }
-
   public void openEngine(String uuid) {
-    openEngine(ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8)));
-  }
-
-  public void openEngine(ByteString uuid) {
+    ByteString uuid_bs = ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8));
     createChannel();
     Supplier<OpenEngineRequest> request =
-        () -> OpenEngineRequest.newBuilder().setUuid(uuid).build();
+        () -> OpenEngineRequest.newBuilder().setUuid(uuid_bs).build();
 
     NoopHandler<OpenEngineResponse> noopHandler = new NoopHandler<>();
 
@@ -60,10 +53,11 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
     this.asyncStub = ImportKVGrpc.newStub(channel);
   }
 
-  public void closeEngine(ByteString uuid) {
+  public void closeEngine(String uuid) {
+    ByteString uuid_bs = ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8));
     createChannel();
     Supplier<CloseEngineRequest> request =
-        () -> CloseEngineRequest.newBuilder().setUuid(uuid).build();
+        () -> CloseEngineRequest.newBuilder().setUuid(uuid_bs).build();
     NoopHandler<CloseEngineResponse> noopHandler = new NoopHandler<>();
 
     callWithRetry(
@@ -73,10 +67,11 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
         noopHandler);
   }
 
-  public void cleanupEngine(ByteString uuid) {
+  public void cleanupEngine(String uuid) {
+    ByteString uuid_bs = ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8));
     createChannel();
     Supplier<CleanupEngineRequest> request =
-        () -> CleanupEngineRequest.newBuilder().setUuid(uuid).build();
+        () -> CleanupEngineRequest.newBuilder().setUuid(uuid_bs).build();
 
     NoopHandler<CleanupEngineResponse> noopHandler = new NoopHandler<>();
 
@@ -88,12 +83,13 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
   }
 
   public void writeRowsV3(
-      ByteString uuid, String tblName, String[] colsNames, long ts, List<KVPair> kvs) {
+      String uuid, String tblName, String[] colsNames, long ts, List<KVPair> kvs) {
+    ByteString uuid_bs = ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8));
     createChannel();
     Supplier<WriteEngineV3Request> request =
         () -> {
           WriteEngineV3Request.Builder builder =
-              WriteEngineV3Request.newBuilder().setCommitTs(ts).setUuid(uuid);
+              WriteEngineV3Request.newBuilder().setCommitTs(ts).setUuid(uuid_bs);
           for (int i = 0; i < kvs.size(); i++) {
             builder.setPairs(i, kvs.get(i));
           }
@@ -110,10 +106,11 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
         noopHandler);
   }
 
-  public void importEngine(ByteString uuid) {
+  public void importEngine(String uuid) {
+    ByteString uuid_bs = ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8));
     createChannel();
     Supplier<ImportEngineRequest> request =
-        () -> ImportEngineRequest.newBuilder().setPdAddr(this.pdAddr).setUuid(uuid).build();
+        () -> ImportEngineRequest.newBuilder().setPdAddr(this.pdAddr).setUuid(uuid_bs).build();
 
     NoopHandler<ImportEngineResponse> noopHandler = new NoopHandler<>();
     callWithRetry(
@@ -126,6 +123,10 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
   // TODO: revisit it later.
   public void compactCluster(
       int level, int dbId, int numOfThreads, ByteString start, ByteString end) {}
+
+  public static ImportKVClient create(TiConfiguration conf, ChannelFactory channelFactory) {
+    return new ImportKVClient(conf, channelFactory);
+  }
 
   protected ImportKVClient(TiConfiguration conf, ChannelFactory channelFactory) {
     super(conf, channelFactory);

@@ -62,6 +62,10 @@ public class KeyUtils {
         + "])";
   }
 
+  public static ByteString extract(Object arr) {
+    return ByteString.copyFrom((byte[]) arr);
+  }
+
   public static boolean hasPrefix(ByteString str, ByteString prefix) {
     if (prefix.size() > str.size()) {
       return false;

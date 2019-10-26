@@ -137,11 +137,6 @@ case class TiDBRelation(session: TiSession,
     } else if (session.getConf.isBatchWriteAllowSparkSQL) {
       TiDBWriter.write(data, sqlContext, saveMode, options.get)
     } else if (session.getConf.isTilightningWriteAllowSparkSQL) {
-      if (session.getConf.getTilightningImporterAddrs == null || session.getConf.getTilightningImporterAddrs.isEmpty) {
-        throw new TiBatchWriteException(
-          "When SparkSQL conf spark.tispark.batch_write.allow_spark_sql is true, spark.tilightning.importer_addrs should not null "
-        )
-      }
       val tiLightningWriter = new TiLightningWriter()
       tiLightningWriter.write(data, sqlContext, saveMode, options.get)
     } else {

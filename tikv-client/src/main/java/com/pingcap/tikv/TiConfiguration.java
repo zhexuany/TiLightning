@@ -254,7 +254,6 @@ public class TiConfiguration implements Serializable {
     return tikvRegionSplitSizeInMB;
   }
 
-
   public boolean isBatchWriteAllowSparkSQL() {
     return batchWriteAllowSparkSQL;
   }
@@ -271,7 +270,7 @@ public class TiConfiguration implements Serializable {
     this.tilightningWriteAllowSparkSQL = tilightningWriteAllowSparkSQL;
   }
 
-  public String getImporterAddrs() {
+  public List<URI> getImporterAddrs() {
     return importerAddrs;
   }
 }

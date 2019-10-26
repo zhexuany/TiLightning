@@ -127,7 +127,16 @@ object TiUtil {
 
   def sparkConfToTiConf(conf: SparkConf): TiConfiguration = {
     // TODO, when lighting write is true, we need create conf with both pd and importer addrs
-    val tiConf = TiConfiguration.createDefault(conf.get(TiConfigConst.PD_ADDRESSES))
+    val tiConf =
+      if (conf.contains(TiConfigConst.TILIGHTNING_IMPORTER_ADDRS)
+          && conf.contains(TiConfigConst.TILIGHTNING_WRITE_ALLOW_SPARK_SQL)) {
+        TiConfiguration.createDefault(
+          conf.get(TiConfigConst.PD_ADDRESSES),
+          conf.get(TiConfigConst.TILIGHTNING_IMPORTER_ADDRS)
+        )
+      } else {
+        TiConfiguration.createDefault(conf.get(TiConfigConst.PD_ADDRESSES))
+      }
 
     if (conf.contains(TiConfigConst.GRPC_FRAME_SIZE)) {
       tiConf.setMaxFrameSize(conf.get(TiConfigConst.GRPC_FRAME_SIZE).toInt)
@@ -177,15 +186,15 @@ object TiUtil {
     }
 
     if (conf.contains(TiConfigConst.BATCH_WRITE_ALLOW_SPARK_SQL)) {
-      tiConf.setBatchWriteAllowSparkSQL(conf.get(TiConfigConst.BATCH_WRITE_ALLOW_SPARK_SQL).toBoolean)
+      tiConf.setBatchWriteAllowSparkSQL(
+        conf.get(TiConfigConst.BATCH_WRITE_ALLOW_SPARK_SQL).toBoolean
+      )
     }
 
     if (conf.contains(TiConfigConst.TILIGHTNING_WRITE_ALLOW_SPARK_SQL)) {
-      tiConf.setTilightningWriteAllowSparkSQL(conf.get(TiConfigConst.TILIGHTNING_WRITE_ALLOW_SPARK_SQL).toBoolean)
-    }
-
-    if (conf.contains(TiConfigConst.TILIGHTNING_IMPORTER_ADDRS)) {
-      tiConf.setTilightningImporterAddrs(conf.get(TiConfigConst.TILIGHTNING_IMPORTER_ADDRS))
+      tiConf.setTilightningWriteAllowSparkSQL(
+        conf.get(TiConfigConst.TILIGHTNING_WRITE_ALLOW_SPARK_SQL).toBoolean
+      )
     }
 
     if (conf.contains(TiConfigConst.WRITE_WITHOUT_LOCK_TABLE)) {

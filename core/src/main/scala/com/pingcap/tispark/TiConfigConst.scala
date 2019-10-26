@@ -36,7 +36,7 @@ object TiConfigConst {
   val SHOW_ROWID: String = "spark.tispark.show_rowid"
   val DB_PREFIX: String = "spark.tispark.db_prefix"
   val BATCH_WRITE_ALLOW_SPARK_SQL: String = "spark.tispark.batch_write.allow_spark_sql"
-  val TILIGHTNING_WRITE_ALLOW_SPARK_SQL: String = "spark.tilightning_write.allow_spark_sql"
+  val TILIGHTNING_WRITE_ALLOW_SPARK_SQL: String = "spark.tilightning.write_allow_spark_sql"
   val TILIGHTNING_IMPORTER_ADDRS: String = "spark.tilightning.importer_addrs"
 
   val WRITE_ENABLE: String = "spark.tispark.write.enable"

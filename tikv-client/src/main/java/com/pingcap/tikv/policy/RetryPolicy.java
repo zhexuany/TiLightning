@@ -54,6 +54,7 @@ public abstract class RetryPolicy<RespT> {
       try {
         result = proc.call();
       } catch (Exception e) {
+        System.out.println("meet exception: " + e.toString());
         rethrowNotRecoverableException(e);
         // Handle request call error
         boolean retry = handler.handleRequestError(backOffer, e);

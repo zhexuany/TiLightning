@@ -7,7 +7,6 @@ import com.google.common.util.concurrent.ThreadFactoryBuilder
 import com.pingcap.tikv.codec.{KeyUtils, TableCodec}
 import com.pingcap.tikv.key.RowKey
 import com.pingcap.tikv.{TiConfiguration, TiSession}
-import com.pingcap.tikv.lightning.ImportKVClient
 import com.pingcap.tikv.meta.{TiColumnInfo, TiDBInfo, TiTableInfo}
 import com.pingcap.tikv.row.ObjectRowImpl
 import com.pingcap.tikv.util.UUIDType5
@@ -31,7 +30,9 @@ object TiLightningWrite {
   }
 }
 
-class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions)
+class TiLightningWrite(@transient val df: DataFrame,
+                       @transient val tiContext: TiContext,
+                       options: TiDBOptions)
     extends Serializable {
 
   private final val logger = LoggerFactory.getLogger(getClass.getName)
@@ -46,7 +47,7 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
   private var colsMapInTiDB: Map[String, TiColumnInfo] = _
   private var colsInDf: List[String] = _
 
-  private val scheduledExecutorService: ScheduledExecutorService =
+  @transient private val scheduledExecutorService: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setDaemon(true).build);
 
   private def write(): Unit = {
@@ -72,6 +73,9 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
     tiTableRef = options.tiTableRef
     tiDBInfo = tiSession.getCatalog.getDatabase(tiTableRef.databaseName)
     tiTableInfo = tiSession.getCatalog.getTable(tiTableRef.databaseName, tiTableRef.tableName)
+
+    switchToNormalMode()
+    df.cache()
 
     scheduledExecutorService.scheduleAtFixedRate(new Runnable {
       override def run(): Unit = {
@@ -108,7 +112,7 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
       .map(x => WrappedRow(x._1, x._2))
 
     // do import for each partition(region)
-    rddAfterSplit.foreachPartition(iter => doImport(iter));
+    rddAfterSplit.foreachPartition(iter => doImport(iter))
   }
 
   private def splitRowByRegion(rdd: RDD[TiRow]): Int = {
@@ -117,7 +121,8 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
     val NO_OF_SAMPLE_ROWS = 1000000L
     var totalSize = 0L
     totalSize = if (totalRows > NO_OF_SAMPLE_ROWS) {
-      val sampleRDD = rdd.sample(withReplacement = false, NO_OF_SAMPLE_ROWS)
+      val sampleRDD =
+        rdd.sample(withReplacement = false, fraction = NO_OF_SAMPLE_ROWS * 1.0 / totalRows)
       val sampleRDDSize = getRDDSize(sampleRDD)
       sampleRDDSize.*(totalRows)./(NO_OF_SAMPLE_ROWS)
     } else {
@@ -158,14 +163,16 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
    * @param iter
    */
   private def doImport(iter: Iterator[WrappedRow]): Unit = {
-    val importKVClient = tiSession.getImportKVClient()
+    logger.info("entering doImport...")
+    val tiSession = TiSession.getInstance(tiConf)
+    val importKVClient = tiSession.getImportKVClient
 
     val tableName = tiTableInfo.getName
-    val engineId = iter.next().handle
+    val engineId = iter.buffered.head.handle
     val tag = makeTag(tableName, engineId)
     val uuid = UUIDType5
       .nameUUIDFromNamespaceAndString(UUID.fromString("d68d6abe-c59e-45d6-ade8-e2b0ceb7bedf"), tag)
-    val uuid_s = uuid.toString
+    val uuid_s = UUIDType5.toBytes(uuid)
 
     // start OpenEngine
     logger.info("opening engine " + uuid)

@@ -10,8 +10,8 @@ class TiLightningWriter {
 
     try {
       TiLightningWrite.write(df, tiContext, options)
-    } finally {
-      println("lightning write failed")
+    } catch {
+      case e: Exception => throw new RuntimeException("lightning write failed: ", e)
     }
   }
 }

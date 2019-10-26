@@ -8,7 +8,7 @@ import java.util.List;
 public class StoresInfo {
   private final List<StoreInfo> storeAddrs;
 
-  public StoresInfo(@JsonProperty("store") List<StoreInfo> storeAddrs) {
+  public StoresInfo(@JsonProperty("stores") List<StoreInfo> storeAddrs) {
     this.storeAddrs = storeAddrs;
   }
 

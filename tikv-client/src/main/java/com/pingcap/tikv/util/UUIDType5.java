@@ -47,7 +47,7 @@ public class UUIDType5 {
     return new UUID(msb, lsb);
   }
 
-  private static byte[] toBytes(UUID uuid) {
+  public static byte[] toBytes(UUID uuid) {
     // inverted logic of fromBytes()
     byte[] out = new byte[16];
     long msb = uuid.getMostSignificantBits();

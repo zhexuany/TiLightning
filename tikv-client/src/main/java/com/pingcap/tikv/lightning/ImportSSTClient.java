@@ -5,6 +5,7 @@ import com.google.protobuf.ByteString;
 import com.pingcap.tikv.AbstractGRPCClient;
 import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.exception.TiKVException;
+import com.pingcap.tikv.meta.Store;
 import com.pingcap.tikv.meta.StoreInfo;
 import com.pingcap.tikv.meta.StoresInfo;
 import com.pingcap.tikv.operation.NoopHandler;
@@ -53,7 +54,8 @@ public class ImportSSTClient extends AbstractGRPCClient<ImportSSTBlockingStub, I
           .readValue(new URL(url), StoresInfo.class)
           .getStoreAddrs()
           .stream()
-          .map(StoreInfo::getAddr)
+          .map(StoreInfo::getStore)
+          .map(Store::getAddr)
           .collect(Collectors.toList());
     } catch (IOException e) {
       throw new TiKVException("failed to get store's addr from pd");

@@ -5,15 +5,15 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class StoreInfo {
-  private final Store store;
+public class Store {
+  private final String addr;
 
   @JsonCreator
-  public StoreInfo(@JsonProperty("store") Store store) {
-    this.store = store;
+  public Store(@JsonProperty("address") String addr) {
+    this.addr = addr;
   }
 
-  public Store getStore() {
-    return store;
+  public String getAddr() {
+    return addr;
   }
 }

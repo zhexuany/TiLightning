@@ -31,7 +31,8 @@ object TiLightningWrite {
   }
 }
 
-class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions) {
+class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions)
+    extends Serializable {
 
   private final val logger = LoggerFactory.getLogger(getClass.getName)
 
@@ -202,6 +203,11 @@ class TiLightningWrite(df: DataFrame, tiContext: TiContext, options: TiDBOptions
     logger.info("importing engine " + uuid)
     importKVClient.importEngine(uuid_s)
     logger.info("imported engine " + uuid)
+
+    // cleanup Engine
+    logger.info("cleaning up engine " + uuid)
+    importKVClient.cleanupEngine(uuid_s)
+    logger.info("cleaned up engine " + uuid)
 
   }
 

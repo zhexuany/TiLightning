@@ -176,12 +176,20 @@ object TiUtil {
       tiConf.setWriteEnable(conf.get(TiConfigConst.WRITE_ENABLE).toBoolean)
     }
 
-    if (conf.contains(TiConfigConst.WRITE_WITHOUT_LOCK_TABLE)) {
-      tiConf.setWriteWithoutLockTable(conf.get(TiConfigConst.WRITE_WITHOUT_LOCK_TABLE).toBoolean)
+    if (conf.contains(TiConfigConst.BATCH_WRITE_ALLOW_SPARK_SQL)) {
+      tiConf.setBatchWriteAllowSparkSQL(conf.get(TiConfigConst.BATCH_WRITE_ALLOW_SPARK_SQL).toBoolean)
     }
 
-    if (conf.contains(TiConfigConst.WRITE_ALLOW_SPARK_SQL)) {
-      tiConf.setWriteAllowSparkSQL(conf.get(TiConfigConst.WRITE_ALLOW_SPARK_SQL).toBoolean)
+    if (conf.contains(TiConfigConst.TILIGHTNING_WRITE_ALLOW_SPARK_SQL)) {
+      tiConf.setTilightningWriteAllowSparkSQL(conf.get(TiConfigConst.TILIGHTNING_WRITE_ALLOW_SPARK_SQL).toBoolean)
+    }
+
+    if (conf.contains(TiConfigConst.TILIGHTNING_IMPORTER_ADDRS)) {
+      tiConf.setTilightningImporterAddrs(conf.get(TiConfigConst.TILIGHTNING_IMPORTER_ADDRS))
+    }
+
+    if (conf.contains(TiConfigConst.WRITE_WITHOUT_LOCK_TABLE)) {
+      tiConf.setWriteWithoutLockTable(conf.get(TiConfigConst.WRITE_WITHOUT_LOCK_TABLE).toBoolean)
     }
 
     if (conf.contains(TiConfigConst.TIKV_REGION_SPLIT_SIZE_IN_MB)) {

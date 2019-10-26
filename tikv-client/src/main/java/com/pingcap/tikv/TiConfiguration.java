@@ -44,7 +44,8 @@ public class TiConfiguration implements Serializable {
   private static final boolean DEF_SHOW_ROWID = false;
   private static final String DEF_DB_PREFIX = "";
   private static final boolean DEF_WRITE_ENABLE = true;
-  private static final boolean DEF_WRITE_ALLOW_SPARK_SQL = false;
+  private static final boolean DEF_BATCH_WRITE_ALLOW_SPARK_SQL = false;
+  private static final boolean DEF_TILIGHTNING_WRITE_ALLOW_SPARK_SQL = false;
   private static final boolean DEF_WRITE_WITHOUT_LOCK_TABLE = false;
   private static final int DEF_TIKV_REGION_SPLIT_SIZE_IN_MB = 96;
 
@@ -64,7 +65,8 @@ public class TiConfiguration implements Serializable {
   private boolean showRowId = DEF_SHOW_ROWID;
   private String dbPrefix = DEF_DB_PREFIX;
 
-  private boolean writeAllowSparkSQL = DEF_WRITE_ALLOW_SPARK_SQL;
+  private boolean batchWriteAllowSparkSQL = DEF_BATCH_WRITE_ALLOW_SPARK_SQL;
+  private boolean tilightningWriteAllowSparkSQL = DEF_TILIGHTNING_WRITE_ALLOW_SPARK_SQL;
   private boolean writeEnable = DEF_WRITE_ENABLE;
   private boolean writeWithoutLockTable = DEF_WRITE_WITHOUT_LOCK_TABLE;
   private int tikvRegionSplitSizeInMB = DEF_TIKV_REGION_SPLIT_SIZE_IN_MB;
@@ -244,14 +246,6 @@ public class TiConfiguration implements Serializable {
     this.writeWithoutLockTable = writeWithoutLockTable;
   }
 
-  public boolean isWriteAllowSparkSQL() {
-    return writeAllowSparkSQL;
-  }
-
-  public void setWriteAllowSparkSQL(boolean writeAllowSparkSQL) {
-    this.writeAllowSparkSQL = writeAllowSparkSQL;
-  }
-
   public void setTikvRegionSplitSizeInMB(int tikvRegionSplitSizeInMB) {
     this.tikvRegionSplitSizeInMB = tikvRegionSplitSizeInMB;
   }
@@ -260,7 +254,24 @@ public class TiConfiguration implements Serializable {
     return tikvRegionSplitSizeInMB;
   }
 
-  public List<URI> getImporterAddrs() {
+
+  public boolean isBatchWriteAllowSparkSQL() {
+    return batchWriteAllowSparkSQL;
+  }
+
+  public void setBatchWriteAllowSparkSQL(boolean batchWriteAllowSparkSQL) {
+    this.batchWriteAllowSparkSQL = batchWriteAllowSparkSQL;
+  }
+
+  public boolean isTilightningWriteAllowSparkSQL() {
+    return tilightningWriteAllowSparkSQL;
+  }
+
+  public void setTilightningWriteAllowSparkSQL(boolean tilightningWriteAllowSparkSQL) {
+    this.tilightningWriteAllowSparkSQL = tilightningWriteAllowSparkSQL;
+  }
+
+  public String getImporterAddrs() {
     return importerAddrs;
   }
 }

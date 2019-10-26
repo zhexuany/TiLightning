@@ -54,6 +54,7 @@ public class TiConfiguration implements Serializable {
   private boolean truncateAsWarning = DEF_TRUNCATE_AS_WARNING;
   private int maxFrameSize = DEF_MAX_FRAME_SIZE;
   private List<URI> pdAddrs = new ArrayList<>();
+  private List<URI> importerAddrs = new ArrayList<>();
   private int indexScanBatchSize = DEF_INDEX_SCAN_BATCH_SIZE;
   private int indexScanConcurrency = DEF_INDEX_SCAN_CONCURRENCY;
   private int tableScanConcurrency = DEF_TABLE_SCAN_CONCURRENCY;
@@ -68,6 +69,13 @@ public class TiConfiguration implements Serializable {
   private boolean writeWithoutLockTable = DEF_WRITE_WITHOUT_LOCK_TABLE;
   private int tikvRegionSplitSizeInMB = DEF_TIKV_REGION_SPLIT_SIZE_IN_MB;
 
+  public static TiConfiguration createDefault(String pdAddrsStr, String importerAddrsStr) {
+	  Objects.requireNonNull(pdAddrsStr, "pdAddrsStr is null");
+	  TiConfiguration conf = new TiConfiguration();
+	  conf.importerAddrs = strToURI(importerAddrsStr);
+	  conf.pdAddrs = strToURI(pdAddrsStr);
+	  return conf;
+  }
   public static TiConfiguration createDefault(String pdAddrsStr) {
     Objects.requireNonNull(pdAddrsStr, "pdAddrsStr is null");
     TiConfiguration conf = new TiConfiguration();
@@ -249,5 +257,9 @@ public class TiConfiguration implements Serializable {
 
   public int getTikvRegionSplitSizeInMB() {
     return tikvRegionSplitSizeInMB;
+  }
+
+  public List<URI> getImporterAddrs() {
+		return importerAddrs;
   }
 }

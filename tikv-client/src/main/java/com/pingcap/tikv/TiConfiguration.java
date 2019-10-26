@@ -70,12 +70,13 @@ public class TiConfiguration implements Serializable {
   private int tikvRegionSplitSizeInMB = DEF_TIKV_REGION_SPLIT_SIZE_IN_MB;
 
   public static TiConfiguration createDefault(String pdAddrsStr, String importerAddrsStr) {
-	  Objects.requireNonNull(pdAddrsStr, "pdAddrsStr is null");
-	  TiConfiguration conf = new TiConfiguration();
-	  conf.importerAddrs = strToURI(importerAddrsStr);
-	  conf.pdAddrs = strToURI(pdAddrsStr);
-	  return conf;
+    Objects.requireNonNull(pdAddrsStr, "pdAddrsStr is null");
+    TiConfiguration conf = new TiConfiguration();
+    conf.importerAddrs = strToURI(importerAddrsStr);
+    conf.pdAddrs = strToURI(pdAddrsStr);
+    return conf;
   }
+
   public static TiConfiguration createDefault(String pdAddrsStr) {
     Objects.requireNonNull(pdAddrsStr, "pdAddrsStr is null");
     TiConfiguration conf = new TiConfiguration();
@@ -260,6 +261,6 @@ public class TiConfiguration implements Serializable {
   }
 
   public List<URI> getImporterAddrs() {
-		return importerAddrs;
+    return importerAddrs;
   }
 }

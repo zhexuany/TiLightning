@@ -55,6 +55,7 @@ public class TiConfiguration implements Serializable {
   private boolean truncateAsWarning = DEF_TRUNCATE_AS_WARNING;
   private int maxFrameSize = DEF_MAX_FRAME_SIZE;
   private List<URI> pdAddrs = new ArrayList<>();
+  private List<URI> importerAddrs = new ArrayList<>();
   private int indexScanBatchSize = DEF_INDEX_SCAN_BATCH_SIZE;
   private int indexScanConcurrency = DEF_INDEX_SCAN_CONCURRENCY;
   private int tableScanConcurrency = DEF_TABLE_SCAN_CONCURRENCY;
@@ -66,10 +67,17 @@ public class TiConfiguration implements Serializable {
 
   private boolean batchWriteAllowSparkSQL = DEF_BATCH_WRITE_ALLOW_SPARK_SQL;
   private boolean tilightningWriteAllowSparkSQL = DEF_TILIGHTNING_WRITE_ALLOW_SPARK_SQL;
-  private String tilightningImporterAddrs = "";
   private boolean writeEnable = DEF_WRITE_ENABLE;
   private boolean writeWithoutLockTable = DEF_WRITE_WITHOUT_LOCK_TABLE;
   private int tikvRegionSplitSizeInMB = DEF_TIKV_REGION_SPLIT_SIZE_IN_MB;
+
+  public static TiConfiguration createDefault(String pdAddrsStr, String importerAddrsStr) {
+    Objects.requireNonNull(pdAddrsStr, "pdAddrsStr is null");
+    TiConfiguration conf = new TiConfiguration();
+    conf.importerAddrs = strToURI(importerAddrsStr);
+    conf.pdAddrs = strToURI(pdAddrsStr);
+    return conf;
+  }
 
   public static TiConfiguration createDefault(String pdAddrsStr) {
     Objects.requireNonNull(pdAddrsStr, "pdAddrsStr is null");
@@ -246,6 +254,7 @@ public class TiConfiguration implements Serializable {
     return tikvRegionSplitSizeInMB;
   }
 
+
   public boolean isBatchWriteAllowSparkSQL() {
     return batchWriteAllowSparkSQL;
   }
@@ -262,11 +271,7 @@ public class TiConfiguration implements Serializable {
     this.tilightningWriteAllowSparkSQL = tilightningWriteAllowSparkSQL;
   }
 
-  public String getTilightningImporterAddrs() {
-    return tilightningImporterAddrs;
-  }
-
-  public void setTilightningImporterAddrs(String tilightningImporterAddrs) {
-    this.tilightningImporterAddrs = tilightningImporterAddrs;
+  public String getImporterAddrs() {
+    return importerAddrs;
   }
 }

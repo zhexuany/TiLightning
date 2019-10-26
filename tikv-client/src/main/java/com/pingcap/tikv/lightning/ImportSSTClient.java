@@ -1,7 +1,9 @@
-package com.pingcap.tikv;
+package com.pingcap.tikv.lightning;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.protobuf.ByteString;
+import com.pingcap.tikv.AbstractGRPCClient;
+import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.exception.TiKVException;
 import com.pingcap.tikv.meta.StoreInfo;
 import com.pingcap.tikv.meta.StoresInfo;

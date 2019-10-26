@@ -8,6 +8,7 @@ import com.pingcap.tikv.util.ChannelFactory;
 import com.pingcap.tikv.util.ConcreteBackOffer;
 import io.grpc.ManagedChannel;
 import java.util.List;
+import java.util.Random;
 import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import org.tikv.kvproto.ImportKVGrpc;
@@ -22,12 +23,12 @@ import org.tikv.kvproto.ImportKvpb.ImportEngineResponse;
 import org.tikv.kvproto.ImportKvpb.KVPair;
 import org.tikv.kvproto.ImportKvpb.OpenEngineRequest;
 import org.tikv.kvproto.ImportKvpb.OpenEngineResponse;
-import org.tikv.kvproto.ImportKvpb.WriteEngineRequest;
 import org.tikv.kvproto.ImportKvpb.WriteEngineResponse;
 import org.tikv.kvproto.ImportKvpb.WriteEngineV3Request;
 
 public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, ImportKVStub> {
   public OpenEngineResponse openEngine(ByteString uuid) {
+    createChannel();
     Supplier<OpenEngineRequest> request =
         () -> OpenEngineRequest.newBuilder().setUuid(uuid).build();
 
@@ -40,13 +41,17 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
         noopHandler);
   }
 
-  private void createChannel(String importAddr) {
-    ManagedChannel channel = channelFactory.getChannel(importAddr);
+  private Random random = new Random();
+
+  private void createChannel() {
+    ManagedChannel channel =
+        channelFactory.getChannel(importAddrs.get(random.nextInt(importAddrs.size())));
     this.blockingStub = ImportKVGrpc.newBlockingStub(channel);
     this.asyncStub = ImportKVGrpc.newStub(channel);
   }
 
   public void closeEngine(ByteString uuid) {
+    createChannel();
     Supplier<CloseEngineRequest> request =
         () -> CloseEngineRequest.newBuilder().setUuid(uuid).build();
     NoopHandler<CloseEngineResponse> noopHandler = new NoopHandler<>();
@@ -59,6 +64,7 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
   }
 
   public void cleanupEngine(ByteString uuid) {
+    createChannel();
     Supplier<CleanupEngineRequest> request =
         () -> CleanupEngineRequest.newBuilder().setUuid(uuid).build();
 
@@ -71,28 +77,9 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
         noopHandler);
   }
 
-  public WriteEngineResponse writeRows(
-      ByteString uuid, String tblName, String[] colsNames, long ts) {
-    // TODO revist it later
-    //		WriteBatch batch = WriteBatch.newBuilder().setCommitTs(0).setMutations(0, ).build();
-    Supplier<WriteEngineRequest> request =
-        () ->
-            WriteEngineRequest.newBuilder()
-                //			.setBatch()
-                //			.setHead()
-                .build();
-
-    NoopHandler<WriteEngineResponse> noopHandler = new NoopHandler<>();
-    return callWithRetry(
-        ConcreteBackOffer.newCustomBackOff(1),
-        ImportKVGrpc.METHOD_WRITE_ENGINE,
-        request,
-        noopHandler);
-  }
-
   public void writeRowsV3(
       ByteString uuid, String tblName, String[] colsNames, long ts, List<KVPair> kvs) {
-    //		WriteBatch batch = WriteBatch.newBuilder().setCommitTs(0).setMutations(0, ).build();
+    createChannel();
     Supplier<WriteEngineV3Request> request =
         () -> {
           WriteEngineV3Request.Builder builder =
@@ -104,6 +91,7 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
           return builder.build();
         };
 
+    // TODO check error
     NoopHandler<WriteEngineResponse> noopHandler = new NoopHandler<>();
     callWithRetry(
         ConcreteBackOffer.newCustomBackOff(1),
@@ -113,6 +101,7 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
   }
 
   public void importEngine(ByteString uuid) {
+    createChannel();
     Supplier<ImportEngineRequest> request =
         () -> ImportEngineRequest.newBuilder().setPdAddr(this.pdAddr).setUuid(uuid).build();
 

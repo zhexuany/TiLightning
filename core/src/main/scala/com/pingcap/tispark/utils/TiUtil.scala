@@ -179,8 +179,12 @@ object TiUtil {
       tiConf.setBatchWriteAllowSparkSQL(conf.get(TiConfigConst.BATCH_WRITE_ALLOW_SPARK_SQL).toBoolean)
     }
 
-    if (conf.contains(TiConfigConst.LIGHTNING_WRITE_ALLOW_SPARK_SQL)) {
-      tiConf.setLightningWriteAllowSparkSQL(conf.get(TiConfigConst.LIGHTNING_WRITE_ALLOW_SPARK_SQL).toBoolean)
+    if (conf.contains(TiConfigConst.TILIGHTNING_WRITE_ALLOW_SPARK_SQL)) {
+      tiConf.setTilightningWriteAllowSparkSQL(conf.get(TiConfigConst.TILIGHTNING_WRITE_ALLOW_SPARK_SQL).toBoolean)
+    }
+
+    if (conf.contains(TiConfigConst.TILIGHTNING_IMPORTER_ADDRS)) {
+      tiConf.setTilightningImporterAddrs(conf.get(TiConfigConst.TILIGHTNING_IMPORTER_ADDRS))
     }
 
     if (conf.contains(TiConfigConst.WRITE_WITHOUT_LOCK_TABLE)) {

@@ -45,7 +45,7 @@ public class TiConfiguration implements Serializable {
   private static final String DEF_DB_PREFIX = "";
   private static final boolean DEF_WRITE_ENABLE = true;
   private static final boolean DEF_BATCH_WRITE_ALLOW_SPARK_SQL = false;
-  private static final boolean DEF_LIGHTNING_WRITE_ALLOW_SPARK_SQL = false;
+  private static final boolean DEF_TILIGHTNING_WRITE_ALLOW_SPARK_SQL = false;
   private static final boolean DEF_WRITE_WITHOUT_LOCK_TABLE = false;
   private static final int DEF_TIKV_REGION_SPLIT_SIZE_IN_MB = 96;
 
@@ -65,7 +65,8 @@ public class TiConfiguration implements Serializable {
   private String dbPrefix = DEF_DB_PREFIX;
 
   private boolean batchWriteAllowSparkSQL = DEF_BATCH_WRITE_ALLOW_SPARK_SQL;
-  private boolean lightningWriteAllowSparkSQL = DEF_LIGHTNING_WRITE_ALLOW_SPARK_SQL;
+  private boolean tilightningWriteAllowSparkSQL = DEF_TILIGHTNING_WRITE_ALLOW_SPARK_SQL;
+  private String tilightningImporterAddrs = "";
   private boolean writeEnable = DEF_WRITE_ENABLE;
   private boolean writeWithoutLockTable = DEF_WRITE_WITHOUT_LOCK_TABLE;
   private int tikvRegionSplitSizeInMB = DEF_TIKV_REGION_SPLIT_SIZE_IN_MB;
@@ -253,11 +254,19 @@ public class TiConfiguration implements Serializable {
     this.batchWriteAllowSparkSQL = batchWriteAllowSparkSQL;
   }
 
-  public boolean isLightningWriteAllowSparkSQL() {
-    return lightningWriteAllowSparkSQL;
+  public boolean isTilightningWriteAllowSparkSQL() {
+    return tilightningWriteAllowSparkSQL;
   }
 
-  public void setLightningWriteAllowSparkSQL(boolean lightningWriteAllowSparkSQL) {
-    this.lightningWriteAllowSparkSQL = lightningWriteAllowSparkSQL;
+  public void setTilightningWriteAllowSparkSQL(boolean tilightningWriteAllowSparkSQL) {
+    this.tilightningWriteAllowSparkSQL = tilightningWriteAllowSparkSQL;
+  }
+
+  public String getTilightningImporterAddrs() {
+    return tilightningImporterAddrs;
+  }
+
+  public void setTilightningImporterAddrs(String tilightningImporterAddrs) {
+    this.tilightningImporterAddrs = tilightningImporterAddrs;
   }
 }

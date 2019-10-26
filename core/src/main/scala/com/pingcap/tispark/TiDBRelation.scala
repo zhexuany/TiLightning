@@ -129,15 +129,19 @@ case class TiDBRelation(session: TiSession,
     }
     // default forbid sql interface
     // cause tispark provide `replace` instead of `insert` semantic
-    if (session.getConf.isBatchWriteAllowSparkSQL && session.getConf.isLightningWriteAllowSparkSQL) {
+    if (session.getConf.isBatchWriteAllowSparkSQL && session.getConf.isTilightningWriteAllowSparkSQL) {
       throw new TiBatchWriteException(
         "SparkSQL write mode is not right. Can not set spark.tispark.batch_write.allow_spark_sql to true" +
           " and spark.tispark.lightning_write.allow_spark_sql to true ."
       )
     } else if (session.getConf.isBatchWriteAllowSparkSQL) {
       TiDBWriter.write(data, sqlContext, saveMode, options.get)
-    } else if (session.getConf.isLightningWriteAllowSparkSQL) {
-
+    } else if (session.getConf.isTilightningWriteAllowSparkSQL) {
+      if (session.getConf.getTilightningImporterAddrs == null || session.getConf.getTilightningImporterAddrs.isEmpty) {
+        throw new TiBatchWriteException(
+          "When SparkSQL conf spark.tispark.batch_write.allow_spark_sql is true, spark.tilightning.importer_addrs should not null "
+        )
+      }
       val tiLightningWriter = new TiLightningWriter()
       tiLightningWriter.write(data, sqlContext, saveMode, options.get)
     } else {

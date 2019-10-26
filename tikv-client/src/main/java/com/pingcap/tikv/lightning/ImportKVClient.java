@@ -33,18 +33,18 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
     return new ImportKVClient(conf, channelFactory);
   }
 
-  public OpenEngineResponse openEngine(String uuid) {
-    return openEngine(ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8)));
+  public void openEngine(String uuid) {
+    openEngine(ByteString.copyFrom(uuid.getBytes(StandardCharsets.UTF_8)));
   }
 
-  public OpenEngineResponse openEngine(ByteString uuid) {
+  public void openEngine(ByteString uuid) {
     createChannel();
     Supplier<OpenEngineRequest> request =
         () -> OpenEngineRequest.newBuilder().setUuid(uuid).build();
 
     NoopHandler<OpenEngineResponse> noopHandler = new NoopHandler<>();
 
-    return callWithRetry(
+    callWithRetry(
         ConcreteBackOffer.newCustomBackOff(1),
         ImportKVGrpc.METHOD_OPEN_ENGINE,
         request,
@@ -55,7 +55,7 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
 
   private void createChannel() {
     ManagedChannel channel =
-        channelFactory.getChannel(importAddrs.get(random.nextInt(importAddrs.size())));
+        channelFactory.getChannel(importAddrs.get(Math.abs(random.nextInt(importAddrs.size()))));
     this.blockingStub = ImportKVGrpc.newBlockingStub(channel);
     this.asyncStub = ImportKVGrpc.newStub(channel);
   }

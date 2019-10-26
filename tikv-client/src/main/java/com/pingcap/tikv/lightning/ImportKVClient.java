@@ -6,7 +6,10 @@ import com.pingcap.tikv.TiConfiguration;
 import com.pingcap.tikv.operation.NoopHandler;
 import com.pingcap.tikv.util.ChannelFactory;
 import com.pingcap.tikv.util.ConcreteBackOffer;
+import io.grpc.ManagedChannel;
+import java.util.List;
 import java.util.function.Supplier;
+import java.util.stream.Collectors;
 import org.tikv.kvproto.ImportKVGrpc;
 import org.tikv.kvproto.ImportKVGrpc.ImportKVBlockingStub;
 import org.tikv.kvproto.ImportKVGrpc.ImportKVStub;
@@ -16,6 +19,7 @@ import org.tikv.kvproto.ImportKvpb.CloseEngineRequest;
 import org.tikv.kvproto.ImportKvpb.CloseEngineResponse;
 import org.tikv.kvproto.ImportKvpb.ImportEngineRequest;
 import org.tikv.kvproto.ImportKvpb.ImportEngineResponse;
+import org.tikv.kvproto.ImportKvpb.KVPair;
 import org.tikv.kvproto.ImportKvpb.OpenEngineRequest;
 import org.tikv.kvproto.ImportKvpb.OpenEngineResponse;
 import org.tikv.kvproto.ImportKvpb.WriteEngineRequest;
@@ -23,18 +27,23 @@ import org.tikv.kvproto.ImportKvpb.WriteEngineResponse;
 import org.tikv.kvproto.ImportKvpb.WriteEngineV3Request;
 
 public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, ImportKVStub> {
-
-  public void openEngine(ByteString keyPrefix, ByteString uuid) {
+  public OpenEngineResponse openEngine(ByteString uuid) {
     Supplier<OpenEngineRequest> request =
-        () -> OpenEngineRequest.newBuilder().setKeyPrefix(keyPrefix).setUuid(uuid).build();
+        () -> OpenEngineRequest.newBuilder().setUuid(uuid).build();
 
     NoopHandler<OpenEngineResponse> noopHandler = new NoopHandler<>();
 
-    callWithRetry(
+    return callWithRetry(
         ConcreteBackOffer.newCustomBackOff(1),
         ImportKVGrpc.METHOD_OPEN_ENGINE,
         request,
         noopHandler);
+  }
+
+  private void createChannel(String importAddr) {
+    ManagedChannel channel = channelFactory.getChannel(importAddr);
+    this.blockingStub = ImportKVGrpc.newBlockingStub(channel);
+    this.asyncStub = ImportKVGrpc.newStub(channel);
   }
 
   public void closeEngine(ByteString uuid) {
@@ -62,7 +71,8 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
         noopHandler);
   }
 
-  public WriteEngineResponse writeEngine() {
+  public WriteEngineResponse writeRows(
+      ByteString uuid, String tblName, String[] colsNames, long ts) {
     // TODO revist it later
     //		WriteBatch batch = WriteBatch.newBuilder().setCommitTs(0).setMutations(0, ).build();
     Supplier<WriteEngineRequest> request =
@@ -80,14 +90,19 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
         noopHandler);
   }
 
-  public void writeEngineV3() {
+  public void writeRowsV3(
+      ByteString uuid, String tblName, String[] colsNames, long ts, List<KVPair> kvs) {
     //		WriteBatch batch = WriteBatch.newBuilder().setCommitTs(0).setMutations(0, ).build();
     Supplier<WriteEngineV3Request> request =
-        () ->
-            WriteEngineV3Request.newBuilder()
-                //			.setBatch()
-                //			.setHead()
-                .build();
+        () -> {
+          WriteEngineV3Request.Builder builder =
+              WriteEngineV3Request.newBuilder().setCommitTs(ts).setUuid(uuid);
+          for (int i = 0; i < kvs.size(); i++) {
+            builder.setPairs(i, kvs.get(i));
+          }
+
+          return builder.build();
+        };
 
     NoopHandler<WriteEngineResponse> noopHandler = new NoopHandler<>();
     callWithRetry(
@@ -97,9 +112,9 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
         noopHandler);
   }
 
-  public void importEngine(String pdAddr, ByteString uuid) {
+  public void importEngine(ByteString uuid) {
     Supplier<ImportEngineRequest> request =
-        () -> ImportEngineRequest.newBuilder().setPdAddr(pdAddr).setUuid(uuid).build();
+        () -> ImportEngineRequest.newBuilder().setPdAddr(this.pdAddr).setUuid(uuid).build();
 
     NoopHandler<ImportEngineResponse> noopHandler = new NoopHandler<>();
     callWithRetry(
@@ -115,7 +130,24 @@ public class ImportKVClient extends AbstractGRPCClient<ImportKVBlockingStub, Imp
 
   protected ImportKVClient(TiConfiguration conf, ChannelFactory channelFactory) {
     super(conf, channelFactory);
+    List<String> pdAddrs =
+        conf.getPdAddrs()
+            .stream()
+            .map(x -> String.format("%s:%s", x.getHost(), x.getPort()))
+            .collect(Collectors.toList());
+    if (pdAddrs.isEmpty()) {
+      throw new IllegalArgumentException("pd addrs is empty");
+    }
+    importAddrs =
+        conf.getImporterAddrs()
+            .stream()
+            .map(x -> String.format("%s:%s", x.getHost(), x.getPort()))
+            .collect(Collectors.toList());
+    pdAddr = pdAddrs.get(0);
   }
+
+  private String pdAddr;
+  private List<String> importAddrs;
 
   @Override
   protected ImportKVBlockingStub getBlockingStub() {

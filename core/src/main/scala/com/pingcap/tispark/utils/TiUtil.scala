@@ -126,6 +126,7 @@ object TiUtil {
   }
 
   def sparkConfToTiConf(conf: SparkConf): TiConfiguration = {
+    // TODO, when lighting write is true, we need create conf with both pd and importer addrs
     val tiConf = TiConfiguration.createDefault(conf.get(TiConfigConst.PD_ADDRESSES))
 
     if (conf.contains(TiConfigConst.GRPC_FRAME_SIZE)) {

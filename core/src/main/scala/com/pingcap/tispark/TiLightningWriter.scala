@@ -13,7 +13,7 @@ class TiLightningWriter {
     try {
       val tableExists = TiDBUtils.tableExists(conn, options)
       if (tableExists) {
-        TiLightningWrite.writeToTiDB(df, tiContext, options)
+        TiLightningWrite.write(df, tiContext, options)
       } else {
         throw new TiBatchWriteException(
           s"table `${options.database}`.`${options.table}` does not exists!"

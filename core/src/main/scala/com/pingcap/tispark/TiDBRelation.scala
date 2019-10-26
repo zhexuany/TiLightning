@@ -121,19 +121,29 @@ case class TiDBRelation(session: TiSession,
       false
   }
 
-  override def insert(data: DataFrame, overwrite: Boolean): Unit =
+  override def insert(data: DataFrame, overwrite: Boolean): Unit = {
+    val saveMode = if (overwrite) {
+      SaveMode.Overwrite
+    } else {
+      SaveMode.Append
+    }
     // default forbid sql interface
     // cause tispark provide `replace` instead of `insert` semantic
-    if (session.getConf.isWriteAllowSparkSQL) {
-      val saveMode = if (overwrite) {
-        SaveMode.Overwrite
-      } else {
-        SaveMode.Append
-      }
+    if (session.getConf.isBatchWriteAllowSparkSQL && session.getConf.isLightningWriteAllowSparkSQL) {
+      throw new TiBatchWriteException(
+        "SparkSQL write mode is not right. Can not set spark.tispark.batch_write.allow_spark_sql to true" +
+          " and spark.tispark.lightning_write.allow_spark_sql to true ."
+      )
+    } else if (session.getConf.isBatchWriteAllowSparkSQL) {
       TiDBWriter.write(data, sqlContext, saveMode, options.get)
+    } else if (session.getConf.isLightningWriteAllowSparkSQL) {
+
+      val tiLightningWriter = new TiLightningWriter()
+      tiLightningWriter.write(data, sqlContext, saveMode, options.get)
     } else {
       throw new TiBatchWriteException(
         "SparkSQL entry for tispark write is disabled. Set spark.tispark.write.allow_spark_sql to enable."
       )
     }
+  }
 }

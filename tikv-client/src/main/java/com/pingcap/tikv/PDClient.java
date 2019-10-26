@@ -27,14 +27,12 @@ import com.pingcap.tikv.codec.CodecDataOutput;
 import com.pingcap.tikv.exception.GrpcException;
 import com.pingcap.tikv.exception.TiClientInternalException;
 import com.pingcap.tikv.meta.TiTimestamp;
-import com.pingcap.tikv.operation.NoopHandler;
 import com.pingcap.tikv.operation.PDErrorHandler;
 import com.pingcap.tikv.pd.PDUtils;
 import com.pingcap.tikv.region.TiRegion;
 import com.pingcap.tikv.util.BackOffer;
 import com.pingcap.tikv.util.ChannelFactory;
 import com.pingcap.tikv.util.FutureObserver;
-import com.sun.tools.internal.ws.wsdl.document.Import;
 import io.grpc.ManagedChannel;
 import java.net.URI;
 import java.util.List;
@@ -45,9 +43,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.tikv.kvproto.ImportSSTGrpc;
-import org.tikv.kvproto.ImportSstpb;
-import org.tikv.kvproto.ImportSstpb.SwitchMode;
 import org.tikv.kvproto.Metapb.Store;
 import org.tikv.kvproto.PDGrpc;
 import org.tikv.kvproto.PDGrpc.PDBlockingStub;
@@ -62,7 +57,6 @@ public class PDClient extends AbstractGRPCClient<PDBlockingStub, PDStub>
   private volatile LeaderWrapper leaderWrapper;
   private ScheduledExecutorService service;
   private List<URI> pdAddrs;
-
 
   @Override
   public TiTimestamp getTimestamp(BackOffer backOffer) {

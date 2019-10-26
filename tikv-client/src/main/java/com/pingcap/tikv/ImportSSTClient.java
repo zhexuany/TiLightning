@@ -34,101 +34,114 @@ import org.tikv.kvproto.Kvrpcpb.Context;
 
 public class ImportSSTClient extends AbstractGRPCClient<ImportSSTBlockingStub, ImportSSTStub> {
 
-	public static ImportSSTClient createImportClient(TiConfiguration conf, ChannelFactory channelFactory) {
-		return new ImportSSTClient(conf, channelFactory);
-	}
+  public static ImportSSTClient createImportSSTClient(
+      TiConfiguration conf, ChannelFactory channelFactory) {
+    return new ImportSSTClient(conf, channelFactory);
+  }
 
-	private ImportSSTClient(TiConfiguration conf,
-		ChannelFactory channelFactory) {
-		super(conf, channelFactory);
-	}
+  private ImportSSTClient(TiConfiguration conf, ChannelFactory channelFactory) {
+    super(conf, channelFactory);
+  }
 
-	private List<String> getAllTiKVAddrs(String pdAddr) {
-		String url = String.format("http://%s/pd/api/v1/stores", pdAddr);
-		ObjectMapper mapper = new ObjectMapper();
-		try {
-			return mapper.readValue(new URL(url), StoresInfo.class).getStoreAddrs().stream().map(
-				StoreInfo::getAddr).collect(
-				Collectors.toList());
-		} catch (IOException e) {
-			throw new TiKVException("failed to get store's addr from pd");
-		}
-	}
+  private List<String> getAllTiKVAddrs(String pdAddr) {
+    String url = String.format("http://%s/pd/api/v1/stores", pdAddr);
+    ObjectMapper mapper = new ObjectMapper();
+    try {
+      return mapper
+          .readValue(new URL(url), StoresInfo.class)
+          .getStoreAddrs()
+          .stream()
+          .map(StoreInfo::getAddr)
+          .collect(Collectors.toList());
+    } catch (IOException e) {
+      throw new TiKVException("failed to get store's addr from pd");
+    }
+  }
 
-	public void switchTiKVToImportMode() {
-		switchTiKVMode(SwitchMode.Import);
-	}
+  public void switchTiKVToImportMode() {
+    switchTiKVMode(SwitchMode.Import);
+  }
 
-	public void switchTiKVToNormalMode() {
-		switchTiKVMode(SwitchMode.Normal);
-	}
+  public void switchTiKVToNormalMode() {
+    switchTiKVMode(SwitchMode.Normal);
+  }
 
-	public void uploadSSTFilesToTiKV(ByteString value, SSTMeta meta) {
-	Supplier<UploadRequest> request = () -> ImportSstpb.UploadRequest.newBuilder()
-		.setData(value)
-		.setMeta(meta)
-		.build();
+  public void uploadSSTFilesToTiKV(ByteString value, SSTMeta meta) {
+    Supplier<UploadRequest> request =
+        () -> ImportSstpb.UploadRequest.newBuilder().setData(value).setMeta(meta).build();
 
-	NoopHandler<UploadResponse> noopHandler = new NoopHandler<>();
-	UploadResponse resp = callWithRetry(ConcreteBackOffer.newCustomBackOff(1), ImportSSTGrpc.METHOD_UPLOAD,request, noopHandler);
-	}
+    NoopHandler<UploadResponse> noopHandler = new NoopHandler<>();
+    UploadResponse resp =
+        callWithRetry(
+            ConcreteBackOffer.newCustomBackOff(1),
+            ImportSSTGrpc.METHOD_UPLOAD,
+            request,
+            noopHandler);
+  }
 
-	public void ingestTiKVSSTFiles(Context ctx, SSTMeta value) {
-		Supplier<IngestRequest> request = () -> ImportSstpb.IngestRequest.newBuilder()
-			.setContext(ctx)
-			.setSst(value)
-			.build();
+  public void ingestTiKVSSTFiles(Context ctx, SSTMeta value) {
+    Supplier<IngestRequest> request =
+        () -> ImportSstpb.IngestRequest.newBuilder().setContext(ctx).setSst(value).build();
 
-		NoopHandler<IngestResponse> noopHandler = new NoopHandler<>();
-		IngestResponse resp = callWithRetry(ConcreteBackOffer.newCustomBackOff(1), ImportSSTGrpc.METHOD_INGEST,request, noopHandler);
-	}
+    NoopHandler<IngestResponse> noopHandler = new NoopHandler<>();
+    IngestResponse resp =
+        callWithRetry(
+            ConcreteBackOffer.newCustomBackOff(1),
+            ImportSSTGrpc.METHOD_INGEST,
+            request,
+            noopHandler);
+  }
 
-	public void compact(int level, ByteString start, ByteString end) {
-		Supplier<CompactRequest> request = () -> ImportSstpb.CompactRequest.newBuilder()
-			.setRange(Range.newBuilder().setStart(start).setEnd(end).build())
-			.setOutputLevel(level)
-			.build();
-		NoopHandler<CompactResponse> noopHandler = new NoopHandler<>();
-		callWithRetry(ConcreteBackOffer.newCustomBackOff(1), ImportSSTGrpc.METHOD_COMPACT, request, noopHandler);
-	}
+  public void compact(int level, ByteString start, ByteString end) {
+    Supplier<CompactRequest> request =
+        () ->
+            ImportSstpb.CompactRequest.newBuilder()
+                .setRange(Range.newBuilder().setStart(start).setEnd(end).build())
+                .setOutputLevel(level)
+                .build();
+    NoopHandler<CompactResponse> noopHandler = new NoopHandler<>();
+    callWithRetry(
+        ConcreteBackOffer.newCustomBackOff(1), ImportSSTGrpc.METHOD_COMPACT, request, noopHandler);
+  }
 
-	private void switchTiKVMode(ImportSstpb.SwitchMode mode) {
-		URI pdAddr = conf.getPdAddrs().get(0);
-		List<String> tikvAddrs = getAllTiKVAddrs(String.format("%s:%s", pdAddr.getHost(), pdAddr.getPort()));
-		tikvAddrs.forEach(
-			addr -> {
-				// update channel for different tikv stores;
-				ManagedChannel channel = channelFactory.getChannel(addr);
-				this.blockingStub = ImportSSTGrpc.newBlockingStub(channel);
-				this.asyncStub = ImportSSTGrpc.newStub(channel);
+  private void switchTiKVMode(ImportSstpb.SwitchMode mode) {
+    URI pdAddr = conf.getPdAddrs().get(0);
+    List<String> tikvAddrs =
+        getAllTiKVAddrs(String.format("%s:%s", pdAddr.getHost(), pdAddr.getPort()));
+    tikvAddrs.forEach(
+        addr -> {
+          // update channel for different tikv stores;
+          ManagedChannel channel = channelFactory.getChannel(addr);
+          this.blockingStub = ImportSSTGrpc.newBlockingStub(channel);
+          this.asyncStub = ImportSSTGrpc.newStub(channel);
 
-				Supplier<SwitchModeRequest> request = () -> ImportSstpb.SwitchModeRequest
-					.newBuilder().setMode(mode)
-					.build();
-				NoopHandler<SwitchModeResponse> noopHandler = new NoopHandler<>();
+          Supplier<SwitchModeRequest> request =
+              () -> ImportSstpb.SwitchModeRequest.newBuilder().setMode(mode).build();
+          NoopHandler<SwitchModeResponse> noopHandler = new NoopHandler<>();
 
-				// backoff in 1 second.
-				callWithRetry(ConcreteBackOffer.newCustomBackOff(1), ImportSSTGrpc.METHOD_SWITCH_MODE,
-					request, noopHandler);
-			}
-		);
+          // backoff in 1 second.
+          callWithRetry(
+              ConcreteBackOffer.newCustomBackOff(1),
+              ImportSSTGrpc.METHOD_SWITCH_MODE,
+              request,
+              noopHandler);
+        });
+  }
 
-	}
+  @Override
+  protected ImportSSTBlockingStub getBlockingStub() {
+    return blockingStub;
+  }
 
-	@Override
-	protected ImportSSTBlockingStub getBlockingStub() {
-		return blockingStub;
-	}
+  @Override
+  protected ImportSSTStub getAsyncStub() {
+    return asyncStub;
+  }
 
-	@Override
-	protected ImportSSTStub getAsyncStub() {
-		return asyncStub;
-	}
-
-	@Override
-	public void close() throws Exception {
-		if(channelFactory != null) {
-			channelFactory.close();
-		}
-	}
+  @Override
+  public void close() throws Exception {
+    if (channelFactory != null) {
+      channelFactory.close();
+    }
+  }
 }

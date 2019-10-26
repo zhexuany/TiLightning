@@ -6,14 +6,13 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class StoresInfo {
-	private final List<StoreInfo> storeAddrs;
+  private final List<StoreInfo> storeAddrs;
 
-	public StoresInfo(
-		@JsonProperty("store") List<StoreInfo> storeAddrs) {
-		this.storeAddrs = storeAddrs;
-	}
+  public StoresInfo(@JsonProperty("store") List<StoreInfo> storeAddrs) {
+    this.storeAddrs = storeAddrs;
+  }
 
-	public List<StoreInfo> getStoreAddrs() {
-		return storeAddrs;
-	}
+  public List<StoreInfo> getStoreAddrs() {
+    return storeAddrs;
+  }
 }

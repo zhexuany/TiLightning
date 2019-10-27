@@ -117,26 +117,21 @@ class TiLightningWrite(@transient val df: DataFrame,
 
   private def splitRowByRegion(rdd: RDD[TiRow]): Int = {
     val regionSize = 96 * 1024 * 1024;
-    val totalRows = rdd.count()
-    val NO_OF_SAMPLE_ROWS = 1000000L
-    var totalSize = 0L
-    totalSize = if (totalRows > NO_OF_SAMPLE_ROWS) {
+    val SAMPLE_FRACTION = 0.1
+    val totalSize = {
       val sampleRDD =
-        rdd.sample(withReplacement = false, fraction = NO_OF_SAMPLE_ROWS * 1.0 / totalRows)
+        rdd.sample(withReplacement = false, fraction = SAMPLE_FRACTION)
       val sampleRDDSize = getRDDSize(sampleRDD)
-      sampleRDDSize.*(totalRows)./(NO_OF_SAMPLE_ROWS)
-    } else {
-      getRDDSize(rdd)
+      sampleRDDSize / SAMPLE_FRACTION
     }
-
-    (totalSize / regionSize).toInt
+    Math.max(1, (totalSize / regionSize).toInt)
   }
 
   def getRDDSize(rdd: RDD[TiRow]): Long = {
     var rddSize = 0L
     val rows = rdd.collect()
-    for (i <- rows.indices) {
-      rddSize += SizeEstimator.estimate(rows(i))
+    for (row <- rows) {
+      rddSize += SizeEstimator.estimate(row)
     }
 
     rddSize
@@ -168,7 +163,12 @@ class TiLightningWrite(@transient val df: DataFrame,
     val importKVClient = tiSession.getImportKVClient
 
     val tableName = tiTableInfo.getName
-    val engineId = iter.buffered.head.handle
+    if (!iter.hasNext) {
+      logger.info("no rows involved.")
+      return
+    }
+    val firstRow = iter.next()
+    val engineId = firstRow.handle
     val tag = makeTag(tableName, engineId)
     val uuid = UUIDType5
       .nameUUIDFromNamespaceAndString(UUID.fromString("d68d6abe-c59e-45d6-ade8-e2b0ceb7bedf"), tag)
@@ -181,7 +181,13 @@ class TiLightningWrite(@transient val df: DataFrame,
     // TODO: restore engine -> import engine -> import kv -> close engine -> clean up
     // we skip restore engine to simplify logic
 
-    val kvs = iter
+    val firstRowKey = generateRowKey(firstRow.row, firstRow.handle)
+    val firstKv = KVPair
+      .newBuilder()
+      .setKey(KeyUtils.extract(firstRowKey._1.bytes))
+      .setValue(KeyUtils.extract(firstRowKey._2))
+      .build()
+    val kvs = List(firstKv) ++ iter
       .map(x => generateRowKey(x.row, x.handle))
       .map(
         x =>

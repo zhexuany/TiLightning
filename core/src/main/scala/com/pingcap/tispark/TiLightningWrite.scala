@@ -12,6 +12,7 @@ import com.pingcap.tikv.meta.{TiColumnInfo, TiDBInfo, TiTableInfo}
 import com.pingcap.tikv.row.ObjectRowImpl
 import com.pingcap.tikv.util.UUIDType5
 import com.pingcap.tispark.TiLightningWrite.{SparkRow, TiRow}
+import org.apache.spark.TaskContext
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.catalyst.analysis.NoSuchTableException
 import org.apache.spark.sql.{DataFrame, TiContext}
@@ -48,8 +49,6 @@ class TiLightningWrite(@transient val df: DataFrame,
   private var colsMapInTiDB: Map[String, TiColumnInfo] = _
   private var colsInDf: List[String] = _
 
-  private val atomicLong: AtomicLong = new AtomicLong(0)
-
   @transient private val scheduledExecutorService: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setDaemon(true).build);
 
@@ -57,7 +56,6 @@ class TiLightningWrite(@transient val df: DataFrame,
     try {
       initialize()
       doWrite()
-      switchToNormalMode()
     } finally {
       close()
     }
@@ -65,6 +63,7 @@ class TiLightningWrite(@transient val df: DataFrame,
 
   def close(): Unit = {
     scheduledExecutorService.shutdownNow()
+    switchToNormalMode()
   }
 
   private def makeTag(tableName: String, engineId: Long): String = s"$tableName:$engineId"
@@ -120,7 +119,7 @@ class TiLightningWrite(@transient val df: DataFrame,
 
   private def splitRowByRegion(rdd: RDD[TiRow]): Int = {
     val regionSize = 96 * 1024 * 1024;
-    val SAMPLE_FRACTION = 0.1
+    val SAMPLE_FRACTION = 0.005
     val totalSize = {
       val sampleRDD =
         rdd.sample(withReplacement = false, fraction = SAMPLE_FRACTION)
@@ -170,7 +169,7 @@ class TiLightningWrite(@transient val df: DataFrame,
       logger.info("no rows involved.")
       return
     }
-    val engineId = atomicLong.addAndGet(1L)
+    val engineId = TaskContext.getPartitionId()
     val tag = makeTag(tableName, engineId)
     val uuid = UUIDType5
       .nameUUIDFromNamespaceAndString(UUID.fromString("d68d6abe-c59e-45d6-ade8-e2b0ceb7bedf"), tag)

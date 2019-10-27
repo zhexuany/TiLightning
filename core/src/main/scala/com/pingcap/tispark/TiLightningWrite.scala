@@ -1,6 +1,7 @@
 package com.pingcap.tispark
 
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.{Executors, ScheduledExecutorService, TimeUnit}
 
 import com.google.common.util.concurrent.ThreadFactoryBuilder
@@ -46,6 +47,8 @@ class TiLightningWrite(@transient val df: DataFrame,
 
   private var colsMapInTiDB: Map[String, TiColumnInfo] = _
   private var colsInDf: List[String] = _
+
+  private val atomicLong: AtomicLong = new AtomicLong(0)
 
   @transient private val scheduledExecutorService: ScheduledExecutorService =
     Executors.newSingleThreadScheduledExecutor(new ThreadFactoryBuilder().setDaemon(true).build);
@@ -167,8 +170,7 @@ class TiLightningWrite(@transient val df: DataFrame,
       logger.info("no rows involved.")
       return
     }
-    val firstRow = iter.next()
-    val engineId = firstRow.handle
+    val engineId = atomicLong.addAndGet(1L)
     val tag = makeTag(tableName, engineId)
     val uuid = UUIDType5
       .nameUUIDFromNamespaceAndString(UUID.fromString("d68d6abe-c59e-45d6-ade8-e2b0ceb7bedf"), tag)
@@ -181,13 +183,7 @@ class TiLightningWrite(@transient val df: DataFrame,
     // TODO: restore engine -> import engine -> import kv -> close engine -> clean up
     // we skip restore engine to simplify logic
 
-    val firstRowKey = generateRowKey(firstRow.row, firstRow.handle)
-    val firstKv = KVPair
-      .newBuilder()
-      .setKey(KeyUtils.extract(firstRowKey._1.bytes))
-      .setValue(KeyUtils.extract(firstRowKey._2))
-      .build()
-    val kvs = List(firstKv) ++ iter
+    val kvs = iter
       .map(x => generateRowKey(x.row, x.handle))
       .map(
         x =>
